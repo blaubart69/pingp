@@ -50,10 +50,9 @@ namespace pingp
         }
         static async Task ResolveAndPingAsync(string hostname, bool resolveOnly)
         {
-            IPHostEntry entry = null;
             try
             {
-                entry = await Dns.GetHostEntryAsync(hostname);
+                IPHostEntry entry = await Dns.GetHostEntryAsync(hostname);
 
                 if (resolveOnly)
                 {
