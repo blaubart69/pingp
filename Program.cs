@@ -52,27 +52,34 @@ namespace pingp
         {
             try
             {
-                IPHostEntry entry = await Dns.GetHostEntryAsync(hostname);
+                IPAddress ipToPing;
+                string IPsCsv;
 
-                if (resolveOnly)
+                if (IPAddress.TryParse(hostname, out ipToPing))
                 {
-                    string ips = String.Join(" ", entry.AddressList.Select(i => i.ToString()));
-                    Console.WriteLine($"{hostname}\t{ips}");
-                    return;
+                    IPsCsv = ipToPing.ToString();
+                }
+                else
+                {
+                    IPHostEntry entry = await Dns.GetHostEntryAsync(hostname);
+
+                    IPsCsv = String.Join(" ", entry.AddressList.Select(i => i.ToString()));
+                    if (resolveOnly)
+                    {
+                        Console.WriteLine($"{hostname}\t{IPsCsv}");
+                        return;
+                    }
+
+                    ipToPing = entry.AddressList[0];
                 }
 
-                IPAddress ipToPing = entry.AddressList[0];
                 PingReply reply = null;
                 using (var ping = new System.Net.NetworkInformation.Ping())
                 {
                     reply = await ping.SendPingAsync(address: ipToPing);
                 }
-                string IPs = null;
-                if ( reply.Status == IPStatus.Success)
-                {
-                    IPs = "\t" + String.Join(" ", entry.AddressList.Select(i => i.ToString()));
-                }
-                Console.WriteLine($"{hostname}\t{reply.Status.ToString()}{IPs}");
+
+                Console.WriteLine($"{hostname}\t{reply.Status.ToString()}\t{(reply.Status == IPStatus.Success ? IPsCsv : String.Empty)}");
             }
             catch (Exception ex)
             {
