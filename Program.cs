@@ -1,14 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using Spi;
+using System;
 using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.NetworkInformation;
-using System.Net.Sockets;
-using System.Text;
 using System.Threading.Tasks;
-
-using Spi;
 
 namespace pingp
 {
