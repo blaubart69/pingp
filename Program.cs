@@ -31,7 +31,7 @@ namespace pingp
                 using (hostnames)
                 {
                     new MaxTasks().Start(
-                        tasks: Spi.Misc.ReadLines(hostnames).Select(h => ResolveAndPingAsync(h, opts.resolveOnly)),
+                        tasks: Spi.Misc.ReadLines(hostnames).Select(h => ResolveAndPingAsync(h.Trim(), opts.resolveOnly)),
                         MaxParallel: 128)
                     .Wait();
                 }
@@ -54,9 +54,15 @@ namespace pingp
                 if (IPAddress.TryParse(hostname, out ipToPing))
                 {
                     IPsCsv = ipToPing.ToString();
+#if DEBUG
+                    Console.WriteLine($"IP parsed successfully: {ipToPing} from name {hostname}");
+#endif
                 }
                 else
                 {
+#if DEBUG
+                    Console.WriteLine($"DNS lookup for: [{hostname}]");
+#endif
                     IPHostEntry entry = await Dns.GetHostEntryAsync(hostname);
 
                     IPsCsv = String.Join(" ", entry.AddressList.Select(i => i.ToString()));
