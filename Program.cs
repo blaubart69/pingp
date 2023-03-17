@@ -22,24 +22,29 @@ namespace pingp
             {
                 new MaxTasks().Start(
                     tasks: hostsToProcess(opts.filename, argHostnames)
-                             .Select(h => ResolveAndPingAsync(h.Trim(), opts.resolveOnly)),
+                             .Select(h => ResolveAndPingAsync(h.Trim(), opts)),
                     MaxParallel: 512)
                 .Wait();
             }
+            catch (FileNotFoundException fex)
+            {
+                Console.WriteLine($"file not found: {fex.FileName}");
+                return 2;
+            }
             catch (Exception ex)
             {
-                Console.Error.WriteLine(ex.Message);
-                Console.Error.WriteLine(ex.StackTrace);
+                Console.Error.WriteLine("Hoppala");
+                Console.Error.WriteLine(ex.ToString());
                 return 8;
             }
             return 0;
         }
-        static async Task ResolveAndPingAsync(string hostname, bool resolveOnly)
+        static async Task ResolveAndPingAsync(string hostname, Opts opts)
         {
             try
             {
                 IPAddress ipToPing;
-                string IPsCsv;
+                string IPsCsv = String.Empty;
 
                 if (IPAddress.TryParse(hostname, out ipToPing))
                 {
@@ -53,16 +58,25 @@ namespace pingp
 #if DEBUG
                     Console.WriteLine($"DNS lookup for: [{hostname}]");
 #endif
-                    IPHostEntry entry = await Dns.GetHostEntryAsync(hostname);
-
-                    IPsCsv = String.Join(" ", entry.AddressList.Select(i => i.ToString()));
-                    if (resolveOnly)
+                    try
                     {
-                        Console.WriteLine($"{hostname}\t{IPsCsv}");
+                        IPHostEntry entry = await Dns.GetHostEntryAsync(hostname);
+                        IPsCsv = String.Join(" ", entry.AddressList.Select(i => i.ToString()));
+                        if (opts.resolveOnly)
+                        {
+                            Console.WriteLine($"{hostname}\t{IPsCsv}");
+                            return;
+                        }
+                        ipToPing = entry.AddressList[0];
+                    }
+                    catch (Exception ex)
+                    {
+                        if (!opts.printOnlyOnline)
+                        {
+                            Console.WriteLine($"{hostname}\t{ex.Message.Replace(' ', '_')}");
+                        }
                         return;
                     }
-
-                    ipToPing = entry.AddressList[0];
                 }
 
                 PingReply reply = null;
@@ -70,12 +84,18 @@ namespace pingp
                 {
                     reply = await ping.SendPingAsync(address: ipToPing);
                 }
-
-                Console.WriteLine($"{hostname}\t{reply.Status.ToString()}\t{(reply.Status == IPStatus.Success ? IPsCsv : String.Empty)}");
+                if (!opts.printOnlyOnline)
+                {
+                    Console.WriteLine($"{hostname}\t{reply.Status.ToString()}\t{(reply.Status == IPStatus.Success ? IPsCsv : String.Empty)}");
+                }
+                else if ( reply.Status == IPStatus.Success )
+                {
+                    Console.WriteLine("{0}", hostname);
+                }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"{hostname}\t{ex.Message.Replace(' ', '_')}");
+                Console.Error.WriteLine(ex);
             }
         }
         static IEnumerable<string> hostsToProcess(string filename, List<string> argHostnames)

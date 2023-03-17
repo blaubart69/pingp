@@ -7,6 +7,7 @@ namespace pingp
     class Opts
     {
         public bool resolveOnly;
+        public bool printOnlyOnline = false;
         public string filename;
 
         public static bool TryParse(string[] args, out Opts opts, out List<string> argHostnames)
@@ -23,6 +24,7 @@ namespace pingp
                 .Add('h', "help",    OPTTYPE.BOOL,  "print usage",                v => showHelp = true)
                 .Add('r', "resolve", OPTTYPE.BOOL,  "only resolve hostnames",     v => tmpOpts.resolveOnly = true)
                 .Add('f', "file",    OPTTYPE.VALUE, "file with hostnames or IPs", v => tmpOpts.filename = v)
+                .Add('o', "online",  OPTTYPE.BOOL,  "print only host were ping succeeds", v => tmpOpts.printOnlyOnline = true)
                 .GetOpts();
 
             argHostnames = Spi.BeeOpts.Parse(args, options, OnUnknown: null);
