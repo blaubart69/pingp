@@ -9,7 +9,7 @@ namespace pingp
         public bool resolveOnly;
         public string filename;
 
-        public static bool TryParse(string[] args, out Opts opts)
+        public static bool TryParse(string[] args, out Opts opts, out List<string> argHostnames)
         {
             bool showHelp = false;
             opts = null;
@@ -20,16 +20,12 @@ namespace pingp
             };
 
             var options = new Spi.BeeOptsBuilder()
-                .Add('h', "help", Spi.OPTTYPE.BOOL, "print usage", v => showHelp = true)
-                .Add('r', "resolve", Spi.OPTTYPE.BOOL, "only resolve hostnames", v => tmpOpts.resolveOnly = true)
+                .Add('h', "help",    OPTTYPE.BOOL,  "print usage",                v => showHelp = true)
+                .Add('r', "resolve", OPTTYPE.BOOL,  "only resolve hostnames",     v => tmpOpts.resolveOnly = true)
+                .Add('f', "file",    OPTTYPE.VALUE, "file with hostnames or IPs", v => tmpOpts.filename = v)
                 .GetOpts();
 
-            List<string> argValues = Spi.BeeOpts.Parse(args, options, OnUnknown: null);
-
-            if (argValues.Count > 0 )
-            {
-                tmpOpts.filename = argValues[0];
-            }
+            argHostnames = Spi.BeeOpts.Parse(args, options, OnUnknown: null);
 
             if ( showHelp )
             {
@@ -42,7 +38,7 @@ namespace pingp
         }
         static void ShowUsage(IEnumerable<BeeOpts> options)
         {
-            Console.WriteLine("usage: pingp [OPTIONS] [filenameWithHostnames]\n");
+            Console.WriteLine("usage: pingp [OPTIONS] [hosts...]\n");
             BeeOpts.PrintOptions(options);
         }
     }

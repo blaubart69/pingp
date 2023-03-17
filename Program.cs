@@ -1,5 +1,6 @@
 ﻿using Spi;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -13,28 +14,17 @@ namespace pingp
         static int Main(string[] args)
         {
             Opts opts;
-            if ( ! Opts.TryParse(args, out opts ) )
+            if ( ! Opts.TryParse(args, out opts, out List<string> argHostnames ) )
             {
                 return 1;
             }
             try
             {
-                TextReader hostnames;
-                if (String.IsNullOrEmpty(opts.filename))
-                {
-                    hostnames = Console.In;
-                }
-                else
-                {
-                    hostnames = new StreamReader(opts.filename, detectEncodingFromByteOrderMarks: true);
-                }
-                using (hostnames)
-                {
-                    new MaxTasks().Start(
-                        tasks: Spi.Misc.ReadLines(hostnames).Select(h => ResolveAndPingAsync(h.Trim(), opts.resolveOnly)),
-                        MaxParallel: 128)
-                    .Wait();
-                }
+                new MaxTasks().Start(
+                    tasks: hostsToProcess(opts.filename, argHostnames)
+                             .Select(h => ResolveAndPingAsync(h.Trim(), opts.resolveOnly)),
+                    MaxParallel: 512)
+                .Wait();
             }
             catch (Exception ex)
             {
@@ -86,6 +76,37 @@ namespace pingp
             catch (Exception ex)
             {
                 Console.WriteLine($"{hostname}\t{ex.Message.Replace(' ', '_')}");
+            }
+        }
+        static IEnumerable<string> hostsToProcess(string filename, List<string> argHostnames)
+        {
+            TextReader hostnameReader = null;
+            if (String.IsNullOrEmpty(filename))
+            {
+                if (argHostnames.Count == 0)
+                {
+                    hostnameReader = Console.In;
+                }
+            }
+            else
+            {
+                hostnameReader = new StreamReader(filename, detectEncodingFromByteOrderMarks: true);
+            }
+
+            foreach (var h in argHostnames)
+            {
+                yield return h;
+            }
+
+            if ( hostnameReader != null )
+            {
+                using (hostnameReader)
+                {
+                    foreach (var h in Misc.ReadLines(hostnameReader))
+                    {
+                        yield return h;
+                    }
+                }
             }
         }
     }
