@@ -29,7 +29,7 @@ namespace pingp
                 new MaxTasks().Start(
                     tasks: hostsToProcess(opts.filename, argHostnames)
                              .Select(h => ResolveAndPingAsync(h.Trim(), opts)),
-                    MaxParallel: 512)
+                    MaxParallel: opts.parallelPings)
                 .Wait();
             }
             catch (FileNotFoundException fex)
@@ -69,11 +69,16 @@ namespace pingp
                 PingReply reply = null;
                 using (var ping = new Ping())
                 {
-                    reply = await ping.SendPingAsync(address: resolveResult.ip);
+                    reply = await ping.SendPingAsync(address: resolveResult.ip, timeout: opts.timeout_ms);
                 }
                 if (!opts.printOnlyOnline)
                 {
-                    Console.WriteLine($"{hostname}\t{reply.Status}\t{(reply.Status == IPStatus.Success ? resolveResult.IPsResolved : String.Empty)}");
+                    Console.WriteLine(
+                        "{0}\t{1}\t{2}{3}",
+                        hostname
+                        , reply.Status
+                        , reply.Status == IPStatus.Success ? resolveResult.IPsResolved : String.Empty
+                        , opts.showRoundtrip ? $"\t{reply.RoundtripTime}" : String.Empty);
                 }
                 else if ( reply.Status == IPStatus.Success )
                 {
