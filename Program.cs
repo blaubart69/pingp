@@ -9,6 +9,12 @@ using System.Threading.Tasks;
 
 namespace pingp
 {
+    struct ResolveResult
+    {
+        public IPAddress ip;
+        public string    IPsResolved;
+        public Exception DNSException;
+    }
     class Program
     {
         static int Main(string[] args)
@@ -43,44 +49,31 @@ namespace pingp
         {
             try
             {
-                IPAddress ipToPing;
-                string IPsCsv = String.Empty;
+                var resolveResult = await TryResolveIP(hostname, opts);
+                if ( resolveResult.ip == null )
+                {
+                    if (!opts.printOnlyOnline)
+                    {
+                        Console.WriteLine($"{hostname}\t{resolveResult.DNSException.Message}");
+                    }
+                    return;
+                }
 
-                if (IPAddress.TryParse(hostname, out ipToPing))
+                if (opts.resolveOnly)
                 {
-                    IPsCsv = ipToPing.ToString();
+                    Console.WriteLine($"{hostname}\t{resolveResult.IPsResolved}");
+                    return;
                 }
-                else
-                {
-                    try
-                    {
-                        IPHostEntry entry = await Dns.GetHostEntryAsync(hostname);
-                        IPsCsv = String.Join(" ", entry.AddressList.Select(i => i.ToString()));
-                        if (opts.resolveOnly)
-                        {
-                            Console.WriteLine($"{hostname}\t{IPsCsv}");
-                            return;
-                        }
-                        ipToPing = entry.AddressList[0];
-                    }
-                    catch (Exception ex)
-                    {
-                        if (!opts.printOnlyOnline)
-                        {
-                            Console.WriteLine($"{hostname}\t{ex.Message.Replace(' ', '_')}");
-                        }
-                        return;
-                    }
-                }
+
 
                 PingReply reply = null;
-                using (var ping = new System.Net.NetworkInformation.Ping())
+                using (var ping = new Ping())
                 {
-                    reply = await ping.SendPingAsync(address: ipToPing);
+                    reply = await ping.SendPingAsync(address: resolveResult.ip);
                 }
                 if (!opts.printOnlyOnline)
                 {
-                    Console.WriteLine($"{hostname}\t{reply.Status.ToString()}\t{(reply.Status == IPStatus.Success ? IPsCsv : String.Empty)}");
+                    Console.WriteLine($"{hostname}\t{reply.Status}\t{(reply.Status == IPStatus.Success ? resolveResult.IPsResolved : String.Empty)}");
                 }
                 else if ( reply.Status == IPStatus.Success )
                 {
@@ -90,6 +83,26 @@ namespace pingp
             catch (Exception ex)
             {
                 Console.Error.WriteLine(ex);
+            }
+        }
+        static async Task<ResolveResult> TryResolveIP(string hostname, Opts opts)
+        {
+            if (IPAddress.TryParse(hostname, out IPAddress ipToPing))
+            {
+                return new ResolveResult() { ip = ipToPing, IPsResolved = ipToPing.ToString() };
+            }
+            else
+            {
+                try
+                {
+                    IPHostEntry entry = await Dns.GetHostEntryAsync(hostname);
+                    string IPs = String.Join(" ", entry.AddressList.Select(i => i.ToString()));
+                    return new ResolveResult() { ip = entry.AddressList[0], IPsResolved = IPs };
+                }
+                catch (Exception ex)
+                {
+                    return new ResolveResult() { DNSException=ex };
+                }
             }
         }
         static IEnumerable<string> hostsToProcess(string filename, List<string> argHostnames)
