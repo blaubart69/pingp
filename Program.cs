@@ -49,15 +49,9 @@ namespace pingp
                 if (IPAddress.TryParse(hostname, out ipToPing))
                 {
                     IPsCsv = ipToPing.ToString();
-#if DEBUG
-                    Console.WriteLine($"IP parsed successfully: {ipToPing} from name {hostname}");
-#endif
                 }
                 else
                 {
-#if DEBUG
-                    Console.WriteLine($"DNS lookup for: [{hostname}]");
-#endif
                     try
                     {
                         IPHostEntry entry = await Dns.GetHostEntryAsync(hostname);
